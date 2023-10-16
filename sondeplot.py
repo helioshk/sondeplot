@@ -21,23 +21,15 @@ parser.add_argument('--nodfm', action='store_true', help='Do not use data from D
 parser.add_argument('logfiles', nargs='+', help='List of log files to process')
 args = parser.parse_args()
 
-# Initialize data as an empty DataFrame
-data = pd.DataFrame(columns=[
-    'timestamp', 'serial', 'frame', 'lat', 'lon', 'alt', 'vel_v', 'vel_h',
-    'heading', 'temp', 'humidity', 'pressure', 'type', 'freq_mhz', 'snr',
-    'f_error_hz', 'sats', 'batt_v', 'burst_timer', 'aux_data'
-])
-
+columns_of_interest = ['lat', 'lon', 'alt', 'snr']
+data = pd.DataFrame(columns=columns_of_interest)
 
 for logfile in args.logfiles:
     if args.nodfm and "DFM" in logfile:
         continue
-    temp_data = pd.read_csv(logfile)
+    temp_data = pd.read_csv(logfile, usecols=columns_of_interest)
+    temp_data = temp_data[temp_data['snr'] != -99.0]
     data = pd.concat([data, temp_data], ignore_index=True)
-    
-# Do not use sondes with unknown SNR
-
-    data = data[data['snr'] != -99.0]
 
 latitudes = data['lat']
 longitudes = data['lon']
@@ -81,7 +73,6 @@ elevations = np.degrees(np.arctan((altitudes - reference_alt - hdiff) / distance
 
 # Calculate the line of sight distance for SNR normalization
 distances_los = np.sqrt(distances**2 + altitudes**2)
-
 
 # Normalizing SNR to 100 km distance
 snr_values = data['snr'].astype(float)
